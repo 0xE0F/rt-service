@@ -1,4 +1,4 @@
-package Items
+package rt.service.Items
 
 class Item(description: String, address: String, contacts: String, date: String, notes: String, district: String,
           price: String, area: String) 
@@ -14,6 +14,5 @@ class Item(description: String, address: String, contacts: String, date: String,
 
    def this() = this("", "", "", "", "", "", "", "")
 
-   override def toString = 
-      "[" + description + ".  " + address + ".  " + contacts + ".  " + date + ".  " + notes + ".  " + district + ".  " + area + ".  " + price + "]"
+   override def toString = description + ".  " + address + ".  " + contacts + ".  " + date + ".  " + notes + ".  " + district + ".  " + area + ".  " + price + "\n\n"
 }
