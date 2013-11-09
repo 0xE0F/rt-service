@@ -1,9 +1,8 @@
 /**
- * Created with IntelliJ IDEA.
  * User: denisbarahtanov
  * Date: 19.10.13
  * Time: 19:56
- * To change this template use File | Settings | File Templates.
+ * Runner
  */
 import java.io._
 import rt.service.Parsers.LifeRealtyParser

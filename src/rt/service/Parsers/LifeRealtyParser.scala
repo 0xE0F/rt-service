@@ -1,36 +1,32 @@
 package rt.service.Parsers
 
 /**
- * Created with IntelliJ IDEA.
  * User: denisbarahtanov
  * Date: 19.10.13
  * Time: 19:59
- * To change this template use File | Settings | File Templates.
+ * Parser implementation for site: life-realty.ru
  */
 
-import java.net.URL
+import java.net.{URI, URL}
 import rt.service.Items._
 import org.htmlcleaner.{TagNode, HtmlCleaner}
 import org.apache.commons.lang3.{StringUtils, StringEscapeUtils}
-
+import scala.collection.JavaConverters._
+import scala.io.Source
 
 class LifeRealtyParser {
 
-  val BaseUrl = "http://rostov.life-realty.ru/sale/?view=simple&page="
+  //private val BaseUrl = "http://rostov.life-realty.ru/sale/?view=simple&page="
+  private val BaseUrl = "http://rostov.life-realty.ru/region/azov/sale/?view=simple&page="
 
   def payloadFromPage(page: Int): List[Item] = {
     // Some implementation insert or do not insert tad "tbody" in table
     // //*[@id=\"list_sale\"]/table[@class=\"list townlist\"]/tr
     // val XPathQuery:String = "//*[@id=\"list_sale\"]/table[@class=\"list townlist\"]/tbody/tr"
 
-    val cleaner = new HtmlCleaner
     val fullUrl = BaseUrl + page.toString
     Console.println("Processing url: " + fullUrl)
-    val rootNode = cleaner.clean( new URL(fullUrl) )
-
-    val table = rootNode.findElementByAttValue("class", "list townlist", true, false)
-    if (table == null)
-      return List()
+    val table = rootNode(fullUrl)
 
     val body = table.findElementByName("tbody", false)
     if (body == null)
@@ -48,14 +44,20 @@ class LifeRealtyParser {
     payloadRows.map(makeItem).toList
   }
 
+  private def rootNode(url: String) : TagNode = {
+    val cleaner = new HtmlCleaner()
+    val root = cleaner.clean( new URL(url) )
+
+    val table = root.findElementByAttValue("class", "list townlist", true, false)
+    if (table != null) table else new TagNode("Empty")
+  }
+
   private def makeItem(node: TagNode) : Item = {
     val tag = node.findElementByAttValue("class", "txt", false, true)
-    if (tag == null)
-      return new Item()
-
-    new Item(getInfo(tag), getAddress(tag),
-      getContacts(tag), getDate(tag), getNotes(tag),
-      getDistrict(node), getPrice(node), getArea(node))
+    if (tag != null) new Item(getInfo(tag), getAddress(tag),
+                              getContacts(tag), getDate(tag), getNotes(tag),
+                              getDistrict(node), getPrice(node), getArea(node))
+    else new Item()
   }
 
   private def getInfo(node: TagNode): String = {

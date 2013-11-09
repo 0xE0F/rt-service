@@ -1,11 +1,10 @@
 package rt.service.Items
 
 /**
- * Created with IntelliJ IDEA.
  * User: denisbarahtanov
  * Date: 19.10.13
  * Time: 19:57
- * To change this template use File | Settings | File Templates.
+ * Item - class for represent the one apartment for sale
  */
 
 class Item(description: String, address: String, contacts: String, date: String, notes: String, district: String,
@@ -22,6 +21,6 @@ class Item(description: String, address: String, contacts: String, date: String,
 
   def this() = this("", "", "", "", "", "", "", "")
 
-  override def toString = description + ".  " + address + ".  " + contacts + ".  " + date + ".  " + notes + ".  " + district + ".  " + area + ".  " + price + "\n\n"
+  override def toString = description + ".\n\t" + address + ".\n\t" + contacts + ".\n\t" + district + ".\n\t" + area + ".\n\t" + price + ".\n\t" + date + ".\n\t" + notes + "\n\n"
 }
 
