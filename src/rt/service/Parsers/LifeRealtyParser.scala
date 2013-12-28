@@ -13,6 +13,7 @@ import org.htmlcleaner.{TagNode, HtmlCleaner}
 import org.apache.commons.lang3.{StringUtils, StringEscapeUtils}
 import scala.collection.JavaConverters._
 import scala.io.Source
+import org.htmlcleaner
 
 class LifeRealtyParser {
 
@@ -28,13 +29,8 @@ class LifeRealtyParser {
     Console.println("Processing url: " + fullUrl)
     val table = rootNode(fullUrl)
 
-    val body = table.findElementByName("tbody", false)
-    if (body == null)
-      return List()
-
-    val rows = body.getElementsByName("tr", false)
-    if (rows == null)
-      return List()
+    val body = Option(table.findElementByName("tbody", false))
+    val rows = body.getOrElse(new TagNode("Empty")).getElementsByName("tr", false)
 
     Console.println("Found rows: " + rows.size)
     val payloadRows = rows filter ( row => row.getAttributeByName("offerid") != null)
@@ -48,29 +44,27 @@ class LifeRealtyParser {
     val cleaner = new HtmlCleaner()
     val root = cleaner.clean( new URL(url) )
 
-    val table = root.findElementByAttValue("class", "list townlist", true, false)
-    if (table != null) table else new TagNode("Empty")
+    val table = Option(root.findElementByAttValue("class", "list townlist", true, false))
+    table.getOrElse(new TagNode("Empty"))
   }
 
   private def makeItem(node: TagNode) : Item = {
-    val tag = node.findElementByAttValue("class", "txt", false, true)
-    if (tag != null) new Item(getInfo(tag), getAddress(tag),
-                              getContacts(tag), getDate(tag), getNotes(tag),
+    val tag = Option(node.findElementByAttValue("class", "txt", false, true))
+    tag match {
+      case Some(t) => new Item(getInfo(t), getAddress(t),
+                              getContacts(t), getDate(t), getNotes(t),
                               getDistrict(node), getPrice(node), getArea(node))
-    else new Item()
+      case None => new Item()
+    }
   }
 
   private def getInfo(node: TagNode): String = {
-    val infoTag = node.findElementByName("a", false)
-    var result = ""
-    if (infoTag != null) {
-      result = StringEscapeUtils.unescapeHtml4(infoTag.getText.toString)
-    }
+    val infoTag = Option(node.findElementByName("a", false))
+    val infoText = infoTag.map( t => StringEscapeUtils.unescapeHtml4(t.getText.toString) )
+    val spanTags = Option(node.getElementsByName("span", false)).getOrElse(Array.empty)
+    val spanText = spanTags.filter(tag => !tag.hasAttribute("class")).flatMap(tag => tag.getText.toString).mkString(", ")
 
-    val spanTags = node.getElementsByName("span", false)
-    result += " " + spanTags.filter(tag => !tag.hasAttribute("class")).map(tag => tag.getText.toString).mkString(", ")
-
-    StringEscapeUtils.unescapeHtml4(result)
+    StringEscapeUtils.unescapeHtml4(infoText.getOrElse("") + " " + spanText)
   }
 
   private def getAddress(node: TagNode): String = {
@@ -83,38 +77,43 @@ class LifeRealtyParser {
     val name  = getTextFromNode(node, "class", "c_face")
     val phone = getTextFromNode(node, "class", "c_phone")
 
-    if (!StringUtils.isBlank(name))
-      phone + " [ " + name + " ]"
-    else
-      phone
+    (name, phone) match {
+      case (Some(n), Some(p)) => p + " [ " + n + " ]"
+      case other => phone.getOrElse("No contacts")
+    }
   }
 
   private def getNotes(node: TagNode): String = {
     val notes = getTextFromNode(node, "class", "mini")
     val comments = getTextFromNode(node, "class", "notice_comments")
 
-    notes + ". " + comments
+    (notes, comments) match {
+      case (Some(n), Some(c) ) => n + ". " + c
+      case other => comments.getOrElse("No notes")
+    }
+  }
+
+  private def extractDate(fullDate: Option[String]) : String = {
+    val pivotStr = "добавлено"
+    val idx = fullDate map { date => date.indexOf(pivotStr) } getOrElse(-1)
+
+    if (idx > 0)
+      fullDate map { date => date.substring(idx + pivotStr.length +1, date.length)} getOrElse("Failed to extract date")
+    else
+      fullDate getOrElse("No date")
   }
 
   private def getDate(node: TagNode): String = {
-    val pivotStr = "добавлено"
-    val div = node.findElementByAttValue("class", "notice_date", true, false)
-    if (div == null)
-      return ""
+    val div = Option(node.findElementByAttValue("class", "notice_date", true, false))
+    val subDiv = div map { _.findElementByName("div", false) } flatMap(Option(_))
+    val fullDate = subDiv map { s => StringEscapeUtils.unescapeHtml4(s.getText.toString) }
 
-    val subDiv = div.findElementByName("div", false)
-    if (subDiv == null)
-      return ""
-
-    val fullDate = StringEscapeUtils.unescapeHtml4(subDiv.getText.toString)
-    val idx = fullDate.indexOf(pivotStr)
-    if (idx > 0)
-      return fullDate.substring(idx + pivotStr.length + 1, fullDate.length)
-
-    fullDate
+    extractDate(fullDate)
   }
 
-  private def getPrice(node: TagNode): String = StringEscapeUtils.unescapeHtml4(getTextFromNode(node, "class", "price"))
+  private def getPrice(node: TagNode): String = {
+    StringEscapeUtils.unescapeHtml4(getTextFromNode(node, "class", "price").getOrElse("No price"))
+  }
 
   private def getArea(node: TagNode): String = {
     val nodes = node.getElementsByAttValue("class", "aright", true, false)
@@ -122,28 +121,19 @@ class LifeRealtyParser {
   }
 
   private def getDistrict(node: TagNode): String = {
-    val area = node.findElementByAttValue("class", "mini", false, false)
-    if (area == null)
-      return ""
+    val area = Option(node.findElementByAttValue("class", "mini", false, false))
+    val div = area map { _.findElementByName("div", false) } flatMap(Option(_))
+    val trash = div map { _.findElementByName("div", false) } flatMap (Option(_))
+    trash map { t => div map { _.removeChild(t) } }
 
-    val div = area.findElementByName("div", false)
-    if (div == null)
-      return ""
-
-    val trash = div.findElementByName("div", false)
-    div.removeChild(trash)
-
-    StringEscapeUtils.unescapeHtml4(div.getText.toString)
+    div map { d => StringEscapeUtils.unescapeHtml4(d.getText.toString) } getOrElse("No area")
   }
 
-  private def getTextFromNode(root: TagNode, attr: String, value: String) : String  = {
-    if (root == null)
-      return ""
-    val node = root.findElementByAttValue(attr, value, true, false)
-    if (node == null)
-      return ""
+  private def getTextFromNode(root: TagNode, attr: String, value: String) : Option[String]  = {
+    assert(root != null)
 
-    StringEscapeUtils.unescapeHtml4(node.getText.toString)
+    val node = Option(root.findElementByAttValue(attr, value, true, false))
+    node map { n => StringEscapeUtils.unescapeHtml4(n.getText.toString) }
   }
 }
 
