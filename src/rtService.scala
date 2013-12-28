@@ -10,15 +10,16 @@ import rt.service.Parsers.LifeRealtyParser
 object rtService extends App {
   override def main(args: Array[String]): Unit = {
     System.out.println("Starting service ...")
-    if ( args.size < 2 ) {
+    if ( args.size < 3 ) {
       System.err.println("Not enough parameters")
       return
     }
 
-    val pageCount = args(0).toInt
-    val fileName  = args(1)
+    val baseUrl   = args(0)
+    val pageCount = args(1).toInt
+    val fileName  = args(2)
 
-    val parser = new LifeRealtyParser()
+    val parser = new LifeRealtyParser(baseUrl)
     val writer = new PrintWriter(new File(fileName), "UTF-8")
 
     try {

@@ -15,17 +15,17 @@ import scala.collection.JavaConverters._
 import scala.io.Source
 import org.htmlcleaner
 
-class LifeRealtyParser {
+class LifeRealtyParser(private[this] val baseUrl: String) {
 
   //private val BaseUrl = "http://rostov.life-realty.ru/sale/?view=simple&page="
-  private val BaseUrl = "http://rostov.life-realty.ru/region/azov/sale/?view=simple&page="
+  //private val BaseUrl = "http://rostov.life-realty.ru/region/azov/sale/?view=simple&page="
 
   def payloadFromPage(page: Int): List[Item] = {
-    // Some implementation insert or do not insert tad "tbody" in table
+    // Some implementation inserts or do not inserts a tag "tbody" in the table
     // //*[@id=\"list_sale\"]/table[@class=\"list townlist\"]/tr
     // val XPathQuery:String = "//*[@id=\"list_sale\"]/table[@class=\"list townlist\"]/tbody/tr"
 
-    val fullUrl = BaseUrl + page.toString
+    val fullUrl = baseUrl + page.toString
     Console.println("Processing url: " + fullUrl)
     val table = rootNode(fullUrl)
 
