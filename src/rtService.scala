@@ -25,7 +25,6 @@ object rtService extends App {
     try {
       for (page <- 1 to pageCount) {
         val items = parser.payloadFromPage(page)
-        System.out.println("Collect items: " + items.size)
         items.foreach(item => writer.print(item.toString))
       }
     }
